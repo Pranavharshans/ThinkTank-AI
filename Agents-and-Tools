@@ -1,0 +1,18 @@
+🔗 Agents and Their Roles
+Each agent operates independently but can interact with other agents when needed.
+
+Agent	Role
+Market Research Agent	Collects industry trends, competition analysis, market gaps.
+Feasibility Analysis Agent	Evaluates technical, financial, and legal feasibility of the idea.
+Customer Persona Agent	Defines the ideal customer profile, user needs, and pain points.
+Business Model Agent	Designs monetization strategies, pricing, and revenue generation models.
+Investor Pitch Agent	Creates an investor-friendly pitch deck based on validated insights.
+🛠 Tools Used for Each Agent
+Each agent requires specific tools for its tasks.
+
+Agent	Tasks	Tools Used
+Market Research Agent	Web scraping, competitor analysis, trend detection	BeautifulSoup, Selenium, Google Trends API, OpenAI GPT-4
+Feasibility Analysis Agent	Cost analysis, risk assessment, legal compliance check	NumPy, Pandas, GPT-4, LangChain
+Customer Persona Agent	Surveys, sentiment analysis, demographic profiling	OpenAI API, Hugging Face Transformers, Google Analytics API
+Business Model Agent	Revenue modeling, pricing strategy	Excel, Stripe API, Monte Carlo Simulation
+Investor Pitch Agent	Generates pitch decks and executive summaries	Canva API, GPT-4, Pandas, LangChain
