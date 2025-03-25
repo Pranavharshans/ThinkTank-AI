@@ -1,5 +1,11 @@
 import warnings
 warnings.filterwarnings('ignore')
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 
@@ -10,9 +16,23 @@ class Agent:
         self.backstory = backstory
         self.allow_delegation = allow_delegation
         self.verbose = verbose
+        # Initialize Gemini model
+        GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+        if not GOOGLE_API_KEY:
+            raise ValueError("GOOGLE_API_KEY environment variable not set")
+        genai.configure(api_key=GOOGLE_API_KEY)
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
 
     def run(self, input_data):
-        print(f"Agent {self.role} processing input: {input_data}")
+        try:
+            prompt = f"You are {self.role}. Your goal is {self.goal}. Backstory: {self.backstory}. Input: {input_data}"
+            response = self.model.generate_content(prompt)
+            print(f"Agent {self.role} processing input: {input_data}")
+            print(response.text)
+            return response.text
+        except Exception as e:
+            print(f"Error processing with Gemini: {e}")
+            return None
 
 # Define agents with detailed roles, goals, and backstories
 
@@ -169,7 +189,7 @@ investor_pitch_agent = Agent(
 )
 
 if __name__ == '__main__':
-    test_idea = "Revolutionary startup idea"
+    test_idea = ""
     market_research_agent.run(test_idea)
     feasibility_analysis_agent.run(test_idea)
     customer_persona_agent.run(test_idea)
