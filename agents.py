@@ -25,10 +25,37 @@ class Agent:
 
     def run(self, input_data):
         try:
-            prompt = f"You are {self.role}. Your goal is {self.goal}. Backstory: {self.backstory}. Input: {input_data}"
+            # Handle both string and dict inputs
+            if isinstance(input_data, dict):
+                task_desc = input_data.get('task_description', '')
+                primary_input = input_data.get('primary_input', '')
+                dependency_results = input_data.get('dependency_results', {})
+                
+                # Construct a more detailed prompt
+                prompt = (
+                    f"You are {self.role}. Your goal is {self.goal}.\n"
+                    f"Backstory: {self.backstory}\n\n"
+                    f"Task Description: {task_desc}\n"
+                    f"Primary Input: {primary_input}\n"
+                    "Previous Task Results:\n"
+                )
+                
+                # Add dependency results if any
+                for task_name, result in dependency_results.items():
+                    prompt += f"- {task_name}: {result}\n"
+                
+            else:
+                # Maintain backward compatibility for string inputs
+                prompt = f"You are {self.role}. Your goal is {self.goal}. Backstory: {self.backstory}. Input: {input_data}"
+            
+            if self.verbose:
+                print(f"Agent {self.role} processing task...")
+                
             response = self.model.generate_content(prompt)
-            print(f"Agent {self.role} processing input: {input_data}")
-            print(response.text)
+            
+            if self.verbose:
+                print(f"Result: {response.text}")
+                
             return response.text
         except Exception as e:
             print(f"Error processing with Gemini: {e}")
