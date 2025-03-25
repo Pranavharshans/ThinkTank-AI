@@ -1,86 +1,104 @@
-from typing import List, Optional
+from enum import Enum
+from typing import List
 from agents import Agent
 
+class Process(Enum):
+    SEQUENTIAL = "sequential"
+    HIERARCHICAL = "hierarchical"
+
 class Task:
-    def __init__(self, 
-                 name: str,
-                 description: str,
-                 required_agent_role: str,
-                 input_data: str,
-                 dependencies: Optional[List['Task']] = None):
+    def __init__(self, name: str, description: str, agent: Agent):
         self.name = name
         self.description = description
-        self.required_agent_role = required_agent_role
-        self.input_data = input_data
-        self.dependencies = dependencies or []
-        self.completed = False
+        self.agent = agent
         self.result = None
 
-class TaskOrchestrator:
-    def __init__(self):
-        self.tasks = []
-        self.agents = {}
+class Crew:
+    def __init__(self, agents: List[Agent], tasks: List[Task], process: Process):
+        self.agents = agents
+        self.tasks = tasks
+        self.process = process
 
-    def register_agent(self, agent: Agent):
-        """Register an agent with the orchestrator"""
-        self.agents[agent.role] = agent
-
-    def create_task(self, 
-                   name: str, 
-                   description: str, 
-                   required_agent_role: str,
-                   input_data: str,
-                   dependencies: Optional[List[Task]] = None) -> Task:
-        """Create and register a new task"""
-        task = Task(name, description, required_agent_role, input_data, dependencies)
-        self.tasks.append(task)
-        return task
-
-    def execute_task(self, task: Task) -> str:
-        """Execute a single task if its dependencies are met"""
-        # Check if all dependencies are completed
-        if not all(dep.completed for dep in task.dependencies):
-            return f"Cannot execute task '{task.name}' - dependencies not met"
-
-        # Find the appropriate agent
-        agent = self.agents.get(task.required_agent_role)
-        if not agent:
-            return f"No agent found for role: {task.required_agent_role}"
-
-        # Prepare input data including results from dependencies
-        enhanced_input = {
-            'task_description': task.description,
-            'primary_input': task.input_data,
-            'dependency_results': {
-                dep.name: dep.result for dep in task.dependencies
-            }
-        }
-
-        # Execute the task
-        result = agent.run(str(enhanced_input))
-        task.completed = True
-        task.result = result
-        return result
-
-    def execute_all_tasks(self) -> List[str]:
-        """Execute all tasks in the correct order based on dependencies"""
+    def kickoff(self, startup_idea: str) -> List[str]:
         results = []
-        remaining_tasks = self.tasks.copy()
-
-        while remaining_tasks:
-            # Find tasks with completed dependencies
-            executable_tasks = [
-                task for task in remaining_tasks
-                if all(dep.completed for dep in task.dependencies)
-            ]
-
-            if not executable_tasks:
-                break  # No tasks can be executed, might indicate circular dependencies
-
-            # Execute all ready tasks
-            for task in executable_tasks:
-                result = self.execute_task(task)
-                results.append(f"Task '{task.name}' result: {result}")
-                remaining_tasks.remove(task)
+        
+        if self.process == Process.SEQUENTIAL:
+            # Execute tasks in sequence
+            for task in self.tasks:
+                task.result = task.agent.run({
+                    'task_description': task.description,
+                    'primary_input': startup_idea,
+                    'previous_results': {t.name: t.result for t in self.tasks if t.result}
+                })
+                results.append(f"Task '{task.name}' result: {task.result}")
+        
+        elif self.process == Process.HIERARCHICAL:
+            # Execute tasks in a hierarchical manner where each task can use results 
+            # from previous tasks and delegate subtasks to other agents
+            
+            # Start with market research as the root task
+            market_research_task = next(t for t in self.tasks if t.name == "Market Research")
+            market_research_task.result = market_research_task.agent.run({
+                'task_description': market_research_task.description,
+                'primary_input': startup_idea,
+                'previous_results': {}
+            })
+            results.append(f"Task '{market_research_task.name}' result: {market_research_task.result}")
+            
+            # Second level: Feasibility Analysis and Customer Analysis
+            second_level = [t for t in self.tasks if t.name in ["Feasibility Analysis", "Customer Analysis"]]
+            for task in second_level:
+                task.result = task.agent.run({
+                    'task_description': task.description,
+                    'primary_input': startup_idea,
+                    'previous_results': {'Market Research': market_research_task.result}
+                })
+                results.append(f"Task '{task.name}' result: {task.result}")
+            
+            # Third level: Business Model and Tech Stack
+            third_level = [t for t in self.tasks if t.name in ["Business Model Development", "Technology Stack"]]
+            for task in third_level:
+                prev_results = {
+                    'Market Research': market_research_task.result,
+                    'Feasibility Analysis': next(t for t in second_level if t.name == "Feasibility Analysis").result,
+                    'Customer Analysis': next(t for t in second_level if t.name == "Customer Analysis").result
+                }
+                task.result = task.agent.run({
+                    'task_description': task.description,
+                    'primary_input': startup_idea,
+                    'previous_results': prev_results
+                })
+                results.append(f"Task '{task.name}' result: {task.result}")
+            
+            # Fourth level: Competitive Analysis and Monetization
+            fourth_level = [t for t in self.tasks if t.name in ["Competitive Analysis", "Monetization Strategy"]]
+            for task in fourth_level:
+                prev_results = {t.name: t.result for t in self.tasks if t.result}
+                task.result = task.agent.run({
+                    'task_description': task.description,
+                    'primary_input': startup_idea,
+                    'previous_results': prev_results
+                })
+                results.append(f"Task '{task.name}' result: {task.result}")
+            
+            # Fifth level: GTM Strategy
+            gtm_task = next(t for t in self.tasks if t.name == "Go-to-Market Strategy")
+            prev_results = {t.name: t.result for t in self.tasks if t.result}
+            gtm_task.result = gtm_task.agent.run({
+                'task_description': gtm_task.description,
+                'primary_input': startup_idea,
+                'previous_results': prev_results
+            })
+            results.append(f"Task '{gtm_task.name}' result: {gtm_task.result}")
+            
+            # Final level: Investor Pitch
+            pitch_task = next(t for t in self.tasks if t.name == "Investor Pitch")
+            prev_results = {t.name: t.result for t in self.tasks if t.result}
+            pitch_task.result = pitch_task.agent.run({
+                'task_description': pitch_task.description,
+                'primary_input': startup_idea,
+                'previous_results': prev_results
+            })
+            results.append(f"Task '{pitch_task.name}' result: {pitch_task.result}")
 
         return results
