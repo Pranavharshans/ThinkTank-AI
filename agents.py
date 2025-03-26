@@ -24,42 +24,81 @@ class Agent:
         self.model = genai.GenerativeModel('gemini-2.0-flash')
 
     def run(self, input_data):
+        """Process input and generate analysis for the startup idea."""
         try:
-            # Handle both string and dict inputs
+            # Process input data
+            startup_idea = ""
+            previous_results = {}
+            
             if isinstance(input_data, dict):
-                task_desc = input_data.get('task_description', '')
-                primary_input = input_data.get('primary_input', '')
-                dependency_results = input_data.get('dependency_results', {})
-                
-                # Construct a more detailed prompt
-                prompt = (
-                    f"You are {self.role}. Your goal is {self.goal}.\n"
-                    f"Backstory: {self.backstory}\n\n"
-                    f"Task Description: {task_desc}\n"
-                    f"Primary Input: {primary_input}\n"
-                    "Previous Task Results:\n"
-                )
-                
-                # Add dependency results if any
-                for task_name, result in dependency_results.items():
-                    prompt += f"- {task_name}: {result}\n"
-                
+                startup_idea = input_data.get('startup_idea', '')
+                previous_results = input_data.get('previous_results', {})
             else:
-                # Maintain backward compatibility for string inputs
-                prompt = f"You are {self.role}. Your goal is {self.goal}. Backstory: {self.backstory}. Input: {input_data}"
+                startup_idea = input_data
+
+            # Validate input
+            if not startup_idea:
+                raise ValueError("Startup idea cannot be empty")
+
+            # Construct a detailed prompt
+            prompt = (
+                f"You are {self.role}. Your goal is {self.goal}.\n"
+                f"Backstory: {self.backstory}\n\n"
+                f"STARTUP IDEA TO ANALYZE:\n{startup_idea}\n\n"
+                "TASK: Based on the above startup idea, "
+                f"provide specific and detailed analysis as {self.role}.\n\n"
+            )
+
+            # Add context from previous analyses if available
+            if previous_results:
+                prompt += "CONTEXT FROM PREVIOUS ANALYSES:\n"
+                for task_num, result in previous_results.items():
+                    prompt += f"{task_num}: {result}\n"
+                prompt += "\nConsider the above context in your analysis.\n"
+
+            prompt += "\nProvide specific, detailed analysis focused on this startup idea. Avoid generic responses."
             
             if self.verbose:
                 print(f"Agent {self.role} processing task...")
-                
-            response = self.model.generate_content(prompt)
+
+            # Configure the model for detailed analysis
+            response = self.model.generate_content(
+                prompt,
+                generation_config={
+                    'temperature': 0.7,
+                    'top_p': 0.8,
+                    'top_k': 40,
+                    'max_output_tokens': 1024,
+                }
+            )
+            
+            if not response.text:
+                raise ValueError("Empty response from model")
+
+            # Post-process the response to ensure specificity
+            processed_response = self._process_response(response.text, startup_idea)
             
             if self.verbose:
-                print(f"Result: {response.text}")
+                print(f"Result: {processed_response}")
                 
-            return response.text
+            return processed_response
+
         except Exception as e:
-            print(f"Error processing with Gemini: {e}")
-            return None
+            error_msg = f"Error in {self.role}: {str(e)}"
+            print(error_msg)
+            return error_msg
+
+    def _process_response(self, response: str, startup_idea: str) -> str:
+        """Ensure response is specific to the startup idea."""
+        if len(response.strip()) < 50:  # Check if response is too short
+            raise ValueError("Response too short - lacks detailed analysis")
+            
+        # Add a section header based on the agent's role
+        header = f"Analysis by {self.role}:\n"
+        # Add reference to the startup idea to ensure specificity
+        context = f"Based on the startup idea: '{startup_idea.strip()[:100]}...'\n\n"
+        
+        return f"{header}{context}{response}"
 
 # Define agents with detailed roles, goals, and backstories
 
@@ -216,13 +255,25 @@ investor_pitch_agent = Agent(
 )
 
 if __name__ == '__main__':
-    test_idea = ""
-    market_research_agent.run(test_idea)
-    feasibility_analysis_agent.run(test_idea)
-    customer_persona_agent.run(test_idea)
-    business_model_agent.run(test_idea)
-    competitive_advantage_agent.run(test_idea)
-    gtm_strategy_agent.run(test_idea)
-    monetization_optimization_agent.run(test_idea)
-    tech_stack_recommender.run(test_idea)
-    investor_pitch_agent.run(test_idea)
+    # Test with a specific startup idea
+    test_idea = """
+    An AI-powered personal finance app that helps users manage their expenses,
+    create budgets, and receive personalized financial advice through machine
+    learning algorithms that analyze spending patterns and financial goals.
+    """
+    
+    # Test with direct input
+    print("\nTesting with direct input:")
+    result = market_research_agent.run(test_idea)
+    print(f"\nDirect input result: {result}")
+    
+    # Test with dictionary input including context
+    print("\nTesting with dictionary input and context:")
+    test_input = {
+        'startup_idea': test_idea,
+        'previous_results': {
+            'Task 1': 'Market size estimated at $5B annually'
+        }
+    }
+    result = feasibility_analysis_agent.run(test_input)
+    print(f"\nDictionary input result: {result}")
