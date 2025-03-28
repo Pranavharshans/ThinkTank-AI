@@ -40,13 +40,16 @@ class Agent:
             if not startup_idea:
                 raise ValueError("Startup idea cannot be empty")
 
-            # Construct a detailed prompt
+            # Construct a structured prompt
             prompt = (
-                f"You are {self.role}. Your goal is {self.goal}.\n"
-                f"Backstory: {self.backstory}\n\n"
-                f"STARTUP IDEA TO ANALYZE:\n{startup_idea}\n\n"
-                "TASK: Based on the above startup idea, "
-                f"provide specific and detailed analysis as {self.role}.\n\n"
+                f"As {self.role} with the goal to {self.goal}, analyze this startup idea:\n"
+                f"{startup_idea}\n\n"
+                "INSTRUCTIONS:\n"
+                "1. Provide a concise, structured analysis\n"
+                "2. Focus on key points and actionable insights\n"
+                "3. Use bullet points for clarity\n"
+                "4. Keep responses brief and specific\n"
+                "5. Avoid generic statements or introductory text\n\n"
             )
 
             # Add context from previous analyses if available
@@ -89,16 +92,20 @@ class Agent:
             return error_msg
 
     def _process_response(self, response: str, startup_idea: str) -> str:
-        """Ensure response is specific to the startup idea."""
+        """Process and structure the response for clarity and conciseness."""
         if len(response.strip()) < 50:  # Check if response is too short
             raise ValueError("Response too short - lacks detailed analysis")
-            
-        # Add a section header based on the agent's role
-        header = f"Analysis by {self.role}:\n"
-        # Add reference to the startup idea to ensure specificity
-        context = f"Based on the startup idea: '{startup_idea.strip()[:100]}...'\n\n"
         
-        return f"{header}{context}{response}"
+        # Clean and structure the response
+        clean_response = response.strip()
+        
+        # Remove any potential redundant headers or context the model might have added
+        lines = clean_response.split('\n')
+        filtered_lines = [line for line in lines if not any(x in line.lower() for x in [
+            'analysis by', 'based on', 'startup idea', 'context from'
+        ])]
+        
+        return '\n'.join(filtered_lines).strip()
 
 # Define agents with detailed roles, goals, and backstories
 
