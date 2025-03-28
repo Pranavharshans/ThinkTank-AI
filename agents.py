@@ -40,16 +40,21 @@ class Agent:
             if not startup_idea:
                 raise ValueError("Startup idea cannot be empty")
 
-            # Construct a structured prompt
+            # Construct a structured prompt with strict formatting
             prompt = (
-                f"As {self.role} with the goal to {self.goal}, analyze this startup idea:\n"
+                f"As {self.role} with the goal to {self.goal}, provide exactly 3-4 key insights about:\n"
                 f"{startup_idea}\n\n"
-                "INSTRUCTIONS:\n"
-                "1. Provide a concise, structured analysis\n"
-                "2. Focus on key points and actionable insights\n"
-                "3. Use bullet points for clarity\n"
-                "4. Keep responses brief and specific\n"
-                "5. Avoid generic statements or introductory text\n\n"
+                "STRICT REQUIREMENTS:\n"
+                "1. Provide exactly 3-4 bullet points only\n"
+                "2. Each point must be 1-2 lines maximum\n"
+                "3. Be specific and quantitative where possible\n"
+                "4. Focus on actionable insights only\n"
+                "5. No introductions, conclusions, or context\n\n"
+                "FORMAT:\n"
+                "• [Specific insight 1: max 2 lines]\n"
+                "• [Specific insight 2: max 2 lines]\n"
+                "• [Specific insight 3: max 2 lines]\n"
+                "• [Optional insight 4: max 2 lines]\n\n"
             )
 
             # Add context from previous analyses if available
@@ -63,7 +68,6 @@ class Agent:
             
             if self.verbose:
                 print(f"Agent {self.role} processing task...")
-
             # Configure the model for detailed analysis
             response = self.model.generate_content(
                 prompt,
