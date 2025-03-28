@@ -68,14 +68,15 @@ class Agent:
             
             if self.verbose:
                 print(f"Agent {self.role} processing task...")
-            # Configure the model for detailed analysis
+            # Configure the model for concise analysis
             response = self.model.generate_content(
                 prompt,
                 generation_config={
                     'temperature': 0.7,
-                    'top_p': 0.8,
+                    'top_p': 0.9,
                     'top_k': 40,
-                    'max_output_tokens': 4096,
+                    'max_output_tokens': 1024,  # Limit output length
+                    'candidate_count': 1,
                 }
             )
             
@@ -97,19 +98,32 @@ class Agent:
 
     def _process_response(self, response: str, startup_idea: str) -> str:
         """Process and structure the response for clarity and conciseness."""
-        if len(response.strip()) < 50:  # Check if response is too short
-            raise ValueError("Response too short - lacks detailed analysis")
+        if len(response.strip()) < 20:  # Check if response is too short
+            raise ValueError("Response too short - lacks analysis")
         
         # Clean and structure the response
         clean_response = response.strip()
         
-        # Remove any potential redundant headers or context the model might have added
+        # Split into lines and filter
         lines = clean_response.split('\n')
-        filtered_lines = [line for line in lines if not any(x in line.lower() for x in [
-            'analysis by', 'based on', 'startup idea', 'context from'
-        ])]
         
-        return '\n'.join(filtered_lines).strip()
+        # Keep only bullet points and ensure max length
+        bullet_lines = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith('•'):
+                # Limit each line to roughly 100 characters
+                if len(line) > 100:
+                    line = line[:97] + '...'
+                bullet_lines.append(line)
+        
+        # Ensure we have 3-4 bullet points only
+        if len(bullet_lines) > 4:
+            bullet_lines = bullet_lines[:4]
+        elif len(bullet_lines) < 3:
+            raise ValueError("Not enough bullet points in response")
+        
+        return '\n'.join(bullet_lines).strip()
 
 # Define agents with detailed roles, goals, and backstories
 
